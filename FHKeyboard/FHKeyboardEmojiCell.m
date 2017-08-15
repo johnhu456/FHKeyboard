@@ -18,10 +18,14 @@
 @end
 
 static CGFloat const kEmojiSize = 35.f;
-static CGFloat const kEmojiColSpacing = 10.f;
-static CGFloat const kEmojiLinSpacing = 10.f;
-static CGFloat const kLeftInset = 15.f;
-static CGFloat const kTopInsets = 36.f;
+
+//#define FH_EMOJI_SCREEN_WIDTH ([UIScreen mainScreen].bounds.size.width)
+#define FH_EMOJI_COL_SPACING ((self.bounds.size.width - kEmojiSize * _numOfCols)/(_numOfCols + 1))
+#define FH_EMOJI_Line_SPACING ((self.bounds.size.height - kEmojiSize * 3)/4)
+//static CGFloat const kEmojiColSpacing = 10.f;
+//static CGFloat const kEmojiLinSpacing = 10.f;
+//static CGFloat const kLeftInset = 15.f;
+static CGFloat const kTopInsets = 20.f;
 
 @implementation FHKeyboardEmojiCell
 
@@ -38,7 +42,13 @@ static CGFloat const kTopInsets = 36.f;
         [emoji removeFromSuperview];
     }
     self.emojiButtons = nil;
-
+    UIDeviceOrientation  orient = [UIDevice currentDevice].orientation;
+    if (orient == UIDeviceOrientationLandscapeLeft || orient == UIDeviceOrientationLandscapeRight) {
+        self.bounds = CGRectMake(0, 0, 1024, 200);
+    } else {
+        self.bounds = CGRectMake(0, 0, 768, 200);
+    }
+    
     //Add new panel
     NSMutableArray *addedButtons = [[NSMutableArray alloc] init];
     for (int line = 0; line < 3 ; line++) {
@@ -47,7 +57,7 @@ static CGFloat const kTopInsets = 36.f;
             if (index <= self.emojiArray.count - 1) {
                 UIButton *newEmojiButton = [UIButton buttonWithType:UIButtonTypeCustom];
                 [newEmojiButton setTitle:self.emojiArray[index] forState:UIControlStateNormal];
-                newEmojiButton.frame = CGRectMake(kLeftInset + col * (kEmojiColSpacing + kEmojiSize), kTopInsets + line * (kEmojiLinSpacing + kEmojiSize), kEmojiSize, kEmojiSize);
+                newEmojiButton.frame = CGRectMake(FH_EMOJI_COL_SPACING + col * (FH_EMOJI_COL_SPACING + kEmojiSize), kTopInsets + line * (FH_EMOJI_Line_SPACING + kEmojiSize), kEmojiSize, kEmojiSize);
                 newEmojiButton.tag = index;
                 [newEmojiButton addTarget:self action:@selector(handleEmojiButtonClicked:) forControlEvents:UIControlEventTouchUpInside];
                 [addedButtons addObject:newEmojiButton];
@@ -55,7 +65,7 @@ static CGFloat const kTopInsets = 36.f;
             } else {
                 UIButton *deleteButton = [UIButton buttonWithType:UIButtonTypeCustom];
                 [deleteButton setTitle:@"Delete" forState:UIControlStateNormal];
-                deleteButton.frame = CGRectMake(kLeftInset + col * (kEmojiColSpacing + kEmojiSize), kTopInsets + line * (kEmojiLinSpacing + kEmojiSize), kEmojiSize, kEmojiSize);
+                deleteButton.frame = CGRectMake(FH_EMOJI_COL_SPACING + (_numOfCols - 1) * (FH_EMOJI_COL_SPACING + kEmojiSize), kTopInsets + line * (FH_EMOJI_Line_SPACING + kEmojiSize), kEmojiSize, kEmojiSize);
                 [deleteButton addTarget:self action:@selector(handleDeleteButtonOnClicked:) forControlEvents:UIControlEventTouchUpInside];
                 [addedButtons addObject:deleteButton];
                 [self.contentView addSubview:deleteButton];

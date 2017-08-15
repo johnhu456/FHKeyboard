@@ -12,6 +12,12 @@
 
 @interface FHKeyboardView : UIView
 
+@property (nonatomic, assign) BOOL hidePageControl;
+
+@property (nonatomic, strong) UIColor *currentPageIndicatorTintColor;
+
+@property (nonatomic, strong) UIColor *pageIndicatorTintColor;
+
 - (instancetype)initWithEmojiClicked:(void(^)(NSString *emoji))emojiHandler
                        deleteClicked:(void(^)())deleteHandler;
 
