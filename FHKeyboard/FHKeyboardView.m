@@ -14,6 +14,8 @@
 #define FH_EMOJI_SCREEN_WIDTH ([UIScreen mainScreen].bounds.size.width)
 #define FH_EMOJI_SCREEN_HEIGHT ([UIScreen mainScreen].bounds.size.height)
 
+#pragma mark - FHEmojiKeyboard
+
 @interface FHEmojiKeyboard:UICollectionView
 
 @end
@@ -23,6 +25,7 @@
          collectionViewLayout:(UICollectionViewLayout *)layout {
     if (self = [super initWithFrame:frame collectionViewLayout:layout])
     {
+        self.backgroundColor = [UIColor clearColor];
         self.showsHorizontalScrollIndicator = NO;
         self.pagingEnabled = YES;
     }
@@ -31,9 +34,13 @@
 
 @end
 
-@interface FHKeyboardView()<UICollectionViewDelegate, UICollectionViewDataSource>
+#pragma mark - FHKeyboardView
+
+@interface FHKeyboardView()<UICollectionViewDelegate, UICollectionViewDataSource,UICollectionViewDelegateFlowLayout>
 
 @property (nonatomic, strong) NSArray *array;
+
+@property (nonatomic, assign) NSInteger selectedIndex;
 
 @property (nonatomic, strong) FHEmojiKeyboard *keyboard;
 
@@ -66,8 +73,6 @@ static CGFloat const kPageControlHeight = 30.f;
         self.handleEmojiClicked = emojiHandler;
         self.autoresizingMask = UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleLeftMargin;
         
-//        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardNotifications:) name:UIKeyboardWillShowNotification object:nil];
-//        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardNotifications:) name:UIKeyboardWillHideNotification object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(handleOrientationDidChange:) name:UIDeviceOrientationDidChangeNotification object:nil];
     }
     return self;
@@ -124,31 +129,7 @@ static CGFloat const kPageControlHeight = 30.f;
 - (void)updateConstraints {
     [super updateConstraints];
     if (self.superview) {
-//        [self.superview removeConstraints:self.superview.constraints];
-//        [self removeConstraints:self.constraints];
-//        NSLayoutConstraint *leftConstraint = [NSLayoutConstraint constraintWithItem:self
-//                                                                          attribute:NSLayoutAttributeLeft
-//                                                                          relatedBy:NSLayoutRelationEqual
-//                                                                             toItem:self.superview
-//                                                                          attribute:NSLayoutAttributeLeft
-//                                                                         multiplier:1
-//                                                                           constant:1];
-//        NSLayoutConstraint *rightConstraint = [NSLayoutConstraint constraintWithItem:self
-//                                                                           attribute:NSLayoutAttributeRight
-//                                                                           relatedBy:NSLayoutRelationEqual
-//                                                                              toItem:self.superview
-//                                                                           attribute:NSLayoutAttributeRight
-//                                                                          multiplier:1
-//                                                                            constant:1];
         self.bottomLayoutConstraint.constant = 0.f;
-        //        NSLayoutConstraint *heightConstraint = [NSLayoutConstraint constraintWithItem:self
-//                                                                            attribute:NSLayoutAttributeHeight
-//                                                                            relatedBy:NSLayoutRelationEqual
-//                                                                               toItem:nil
-//                                                                            attribute:NSLayoutAttributeHeight
-//                                                                           multiplier:1
-//                                                                             constant:200.f];
-//        [self.superview addConstraints:@[leftConstraint,rightConstraint,bottomConstraint,heightConstraint]];
         [self.superview layoutIfNeeded];
     }
 }
@@ -247,9 +228,13 @@ static CGFloat const kPageControlHeight = 30.f;
     return cell;
 }
 
+- (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
+    return CGSizeMake(FH_EMOJI_SCREEN_HEIGHT, 200);
+}
+
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
-    NSInteger index = self.keyboard.contentOffset.x/FH_EMOJI_SCREEN_WIDTH;
-    self.pageControl.currentPage = index;
+    self.selectedIndex = self.keyboard.contentOffset.x/FH_EMOJI_SCREEN_WIDTH;
+    self.pageControl.currentPage = self.selectedIndex;
 }
 
 #pragma mark - PublicMethod
@@ -288,22 +273,17 @@ static CGFloat const kPageControlHeight = 30.f;
     }
 }
 
-#pragma mark 
+#pragma mark - HandleNotificaiton
 
 - (void)handleOrientationDidChange:(NSNotification *)notification {
-////    [self.keyboard reloadSections:[NSIndexSet indexSetWithIndex:0]];
     [self updateConstraints];
-//    [self.keyboard reloadItemsAtIndexPaths:@[[NSIndexPath indexPathForRow:0 inSection:0],[NSIndexPath indexPathForRow:1 inSection:0]]];
-    UIDeviceOrientation  orient = [UIDevice currentDevice].orientation;
-    UICollectionViewFlowLayout *layout = (UICollectionViewFlowLayout *)self.keyboard.collectionViewLayout;
-    if (orient == UIDeviceOrientationLandscapeLeft || orient == UIDeviceOrientationLandscapeRight) {
-        self.keyboard.frame = CGRectMake(0, 0, 1024, 200);
-        layout.itemSize = CGSizeMake(1024, 200);
-    } else {
-        self.keyboard.frame = CGRectMake(0, 0, 768, 200);
-        layout.itemSize = CGSizeMake(768, 200);
-    }
+    self.keyboard.frame = CGRectMake(0, 0, FH_EMOJI_SCREEN_HEIGHT, 200);
     [self.keyboard reloadData];
+    [self.keyboard selectItemAtIndexPath:[NSIndexPath indexPathForRow:self.selectedIndex inSection:0] animated:NO scrollPosition:UICollectionViewScrollPositionTop];
+}
+
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 @end

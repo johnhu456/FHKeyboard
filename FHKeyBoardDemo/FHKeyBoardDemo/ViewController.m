@@ -50,6 +50,7 @@
         }];
         self.keyboardView = keyboardView;
     }
+    self.keyboardView.backgroundColor = [UIColor grayColor];
     [self.keyboardView showInView:self.view animated:YES];
 }
 

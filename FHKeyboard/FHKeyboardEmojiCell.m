@@ -22,9 +22,7 @@ static CGFloat const kEmojiSize = 35.f;
 //#define FH_EMOJI_SCREEN_WIDTH ([UIScreen mainScreen].bounds.size.width)
 #define FH_EMOJI_COL_SPACING ((self.bounds.size.width - kEmojiSize * _numOfCols)/(_numOfCols + 1))
 #define FH_EMOJI_Line_SPACING ((self.bounds.size.height - kEmojiSize * 3)/4)
-//static CGFloat const kEmojiColSpacing = 10.f;
-//static CGFloat const kEmojiLinSpacing = 10.f;
-//static CGFloat const kLeftInset = 15.f;
+
 static CGFloat const kTopInsets = 20.f;
 
 @implementation FHKeyboardEmojiCell
@@ -42,12 +40,6 @@ static CGFloat const kTopInsets = 20.f;
         [emoji removeFromSuperview];
     }
     self.emojiButtons = nil;
-    UIDeviceOrientation  orient = [UIDevice currentDevice].orientation;
-    if (orient == UIDeviceOrientationLandscapeLeft || orient == UIDeviceOrientationLandscapeRight) {
-        self.bounds = CGRectMake(0, 0, 1024, 200);
-    } else {
-        self.bounds = CGRectMake(0, 0, 768, 200);
-    }
     
     //Add new panel
     NSMutableArray *addedButtons = [[NSMutableArray alloc] init];
