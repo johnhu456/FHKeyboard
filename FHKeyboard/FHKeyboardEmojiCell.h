@@ -10,7 +10,11 @@
 
 @interface FHKeyboardEmojiCell : UICollectionViewCell
 
+@property (nonatomic, assign) CGFloat numOfCols;
+
 @property (nonatomic, strong) NSArray<NSString *> *emojiArray;
+
+@property (nonatomic, strong) UIImage *deleteButtonImage;
 
 @property (nonatomic, copy) void(^handleEmojiClicked)(NSString *emoji);
 

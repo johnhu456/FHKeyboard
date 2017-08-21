@@ -51,6 +51,8 @@
         self.keyboardView = keyboardView;
     }
     self.keyboardView.backgroundColor = [UIColor grayColor];
+//    self.keyboardView.keyboardHeight = 300.f;
+    self.keyboardView.deleteButtonImage = [UIImage imageNamed:@"file_toolbar_delete"];
     [self.keyboardView showInView:self.view animated:YES];
 }
 

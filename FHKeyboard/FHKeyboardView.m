@@ -13,6 +13,7 @@
 
 #define FH_EMOJI_SCREEN_WIDTH ([UIScreen mainScreen].nativeBounds.size.width/[UIScreen mainScreen].nativeScale)
 #define FH_EMOJI_SCREEN_HEIGHT ([UIScreen mainScreen].nativeBounds.size.height/[UIScreen mainScreen].nativeScale)
+#define FH_EMOJI_COUNT_OF_EACHPAGE (self.numOfCols * self.numOfLines - 1)
 
 #pragma mark - FHEmojiKeyboard
 
@@ -21,24 +22,60 @@
 @end
 
 @implementation FHEmojiKeyboard
+
 - (instancetype)initWithFrame:(CGRect)frame
          collectionViewLayout:(UICollectionViewLayout *)layout {
-    if (self = [super initWithFrame:frame collectionViewLayout:layout])
-    {
+    if (self = [super initWithFrame:frame collectionViewLayout:layout]) {
+        self.remembersLastFocusedIndexPath = YES;
         self.backgroundColor = [UIColor clearColor];
         self.showsHorizontalScrollIndicator = NO;
         self.pagingEnabled = YES;
+    
     }
     return self;
 }
 
 @end
 
+#pragma mark - FHEmojiKeyboardLayout
+
+@interface FHEmojiKeyboardLayout:UICollectionViewFlowLayout
+
+@property (strong)NSIndexPath* pathForFocusItem;
+
+@end
+
+@implementation FHEmojiKeyboardLayout
+
+- (instancetype)init {
+    if (self = [super init]) {
+        self.scrollDirection = UICollectionViewScrollDirectionHorizontal;
+        self.minimumLineSpacing = 0.f;
+        self.minimumInteritemSpacing = 0.f;
+        self.itemSize = CGSizeMake(FH_EMOJI_SCREEN_WIDTH, 200);
+        self.estimatedItemSize = CGSizeMake(FH_EMOJI_SCREEN_WIDTH, 200);
+    }
+    return self;
+}
+//
+//-(CGPoint)targetContentOffsetForProposedContentOffset:(CGPoint)proposedContentOffset
+//{
+//    if (self.pathForFocusItem) {
+//        UICollectionViewLayoutAttributes* layoutAttrs = [self layoutAttributesForItemAtIndexPath:self.pathForFocusItem];
+//        return CGPointMake(layoutAttrs.frame.origin.x - self.collectionView.contentInset.left, layoutAttrs.frame.origin.y-self.collectionView.contentInset.top);
+//    }else{
+//        return [super targetContentOffsetForProposedContentOffset:proposedContentOffset];
+//    }
+//}
+
+@end
+
+
 #pragma mark - FHKeyboardView
 
 @interface FHKeyboardView()<UICollectionViewDelegate, UICollectionViewDataSource,UICollectionViewDelegateFlowLayout>
 
-@property (nonatomic, strong) NSArray *array;
+@property (nonatomic, strong) NSArray *emojiArray;
 
 @property (nonatomic, assign) NSInteger selectedIndex;
 
@@ -58,7 +95,6 @@
 
 @end
 
-static CGFloat const kKeyboardHeight = 200.f;
 static CGFloat const kPageControlHeight = 30.f;
 
 @implementation FHKeyboardView
@@ -67,35 +103,38 @@ static CGFloat const kPageControlHeight = 30.f;
                        deleteClicked:(void(^)())deleteHandler {
     if (self = [super initWithFrame:CGRectZero]) {
         self.frame = CGRectMake(0, FH_EMOJI_SCREEN_HEIGHT, FH_EMOJI_SCREEN_WIDTH, 200);
-        self.backgroundColor = [UIColor whiteColor];
+        [self resetConfiguration];
         [self setupKeyboard];
         [self setupPageControl];
-        self.translatesAutoresizingMaskIntoConstraints = NO;
         
-        self.array = [self defaultEmoticons];
+        self.translatesAutoresizingMaskIntoConstraints = NO;
         self.handleDeleteClicked = deleteHandler;
         self.handleEmojiClicked = emojiHandler;
         self.autoresizingMask = UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleLeftMargin;
         
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(handleOrientationDidChange:) name:UIDeviceOrientationDidChangeNotification object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(handleKeyboardWillShow:) name:UIKeyboardWillShowNotification object:nil];
     }
     return self;
 }
 
-- (UIInterfaceOrientation)orientation {
-    return [UIApplication sharedApplication].statusBarOrientation;
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
-- (NSArray *)defaultEmoticons {
-    NSMutableArray *array = [NSMutableArray new];
-    for (int i=0x1F600; i<=0x1F64F; i++) {
-        if (i < 0x1F641 || i > 0x1F644) {
-            int sym = EMOJI_CODE_TO_SYMBOL(i);
-            NSString *emoT = [[NSString alloc] initWithBytes:&sym length:sizeof(sym) encoding:NSUTF8StringEncoding];
-            [array addObject:emoT];
-        }
+#pragma mark - PrivateMethod
+
+- (void)resetConfiguration {
+    self.keyboardHeight = 216.f;
+    self.numOfLines = 3;
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+        self.numOfCols = 10;
+    } else {
+        self.numOfCols = 8;
     }
-    return array;
+    
+    self.backgroundColor = [UIColor whiteColor];
+    self.emojiArray = [self defaultEmoticons];
 }
 
 - (void)makeConstraints {
@@ -121,14 +160,14 @@ static CGFloat const kPageControlHeight = 30.f;
                                                                           toItem:self.superview
                                                                        attribute:NSLayoutAttributeBottom
                                                                       multiplier:1
-                                                                        constant:200.f];
+                                                                        constant:self.keyboardHeight];
         NSLayoutConstraint *heightConstraint = [NSLayoutConstraint constraintWithItem:self
                                                                         attribute:NSLayoutAttributeHeight
                                                                         relatedBy:NSLayoutRelationEqual
                                                                            toItem:nil
                                                                         attribute:NSLayoutAttributeHeight
                                                                        multiplier:1
-                                                                         constant:200.f];
+                                                                         constant:self.keyboardHeight];
         [self.superview addConstraints:@[leftConstraint,rightConstraint,self.bottomLayoutConstraint,heightConstraint]];
         [self.superview layoutIfNeeded];
     }
@@ -143,26 +182,19 @@ static CGFloat const kPageControlHeight = 30.f;
 }
 
 - (void)setupKeyboard {
-    UICollectionViewFlowLayout *horizontalLayout = [[UICollectionViewFlowLayout alloc] init];
-    horizontalLayout.scrollDirection = UICollectionViewScrollDirectionHorizontal;
-    horizontalLayout.minimumLineSpacing = 0.f;
-    horizontalLayout.minimumInteritemSpacing = 0.f;
-    horizontalLayout.itemSize = CGSizeMake(FH_EMOJI_SCREEN_WIDTH, 200);
-    horizontalLayout.estimatedItemSize = CGSizeMake(FH_EMOJI_SCREEN_WIDTH, 200);
+    FHEmojiKeyboardLayout *horizontalLayout = [[FHEmojiKeyboardLayout alloc] init];
     self.keyboard = [[FHEmojiKeyboard alloc] initWithFrame:self.bounds collectionViewLayout:horizontalLayout];
     self.keyboard.dataSource = self;
     self.keyboard.delegate = self;
-    if ([self.keyboard respondsToSelector:@selector(setDirectionalLayoutMargins:)]) {
-        self.keyboard.directionalLayoutMargins =NSDirectionalEdgeInsetsMake(0,0,0,0);
-    }
     [self.keyboard registerClass:[FHKeyboardEmojiCell class] forCellWithReuseIdentifier:@"11"];
     [self addSubview:self.keyboard];
     [self makeConstraints];
 }
 
 - (void)setupPageControl {
-    self.pageControl = [[UIPageControl alloc] initWithFrame:CGRectMake(0, kKeyboardHeight - kPageControlHeight , FH_EMOJI_SCREEN_WIDTH, kPageControlHeight)];
-    self.pageControl.numberOfPages = 2;
+    self.pageControl = [[UIPageControl alloc] initWithFrame:CGRectMake(0, self.keyboardHeight - kPageControlHeight , FH_EMOJI_SCREEN_WIDTH, kPageControlHeight)];
+    CGFloat  overCount = self.emojiArray.count % FH_EMOJI_COUNT_OF_EACHPAGE;
+    self.pageControl.numberOfPages = overCount == 0 ? self.emojiArray.count / FH_EMOJI_COUNT_OF_EACHPAGE : self.emojiArray.count / FH_EMOJI_COUNT_OF_EACHPAGE + 1;
     self.pageControl.currentPageIndicatorTintColor = self.currentPageIndicatorTintColor;
     self.pageControl.pageIndicatorTintColor = self.pageIndicatorTintColor;
     self.pageControl.hidden = self.hidePageControl;
@@ -193,18 +225,21 @@ static CGFloat const kPageControlHeight = 30.f;
 }
 
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section {
-    return 2;
+    CGFloat  overCount = self.emojiArray.count % FH_EMOJI_COUNT_OF_EACHPAGE;
+    return overCount == 0 ?  self.emojiArray.count / FH_EMOJI_COUNT_OF_EACHPAGE : self.emojiArray.count / FH_EMOJI_COUNT_OF_EACHPAGE + 1;
 }
 
 - (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
     FHKeyboardEmojiCell *cell = [self.keyboard dequeueReusableCellWithReuseIdentifier:@"11" forIndexPath:indexPath];
     NSArray *emojiArray;
-    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-        emojiArray= [self.array subarrayWithRange:NSMakeRange(0, 29)];
+    if ((indexPath.row + 1) * FH_EMOJI_COUNT_OF_EACHPAGE > self.emojiArray.count)
+    {
+        emojiArray = [self.emojiArray subarrayWithRange:NSMakeRange(indexPath.row * FH_EMOJI_COUNT_OF_EACHPAGE, self.emojiArray.count - indexPath.row * FH_EMOJI_COUNT_OF_EACHPAGE)];
     } else {
-        emojiArray = [self.array subarrayWithRange:NSMakeRange(0, 23)];
+        emojiArray = [self.emojiArray subarrayWithRange:NSMakeRange(indexPath.row * FH_EMOJI_COUNT_OF_EACHPAGE, FH_EMOJI_COUNT_OF_EACHPAGE)];
     }
     cell.emojiArray = emojiArray;
+    cell.deleteButtonImage = self.deleteButtonImage;
     cell.handleEmojiClicked = self.handleEmojiClicked;
     cell.handleDeleteClicked = self.handleDeleteClicked;
     return cell;
@@ -212,15 +247,14 @@ static CGFloat const kPageControlHeight = 30.f;
 
 - (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
     if (UIInterfaceOrientationIsLandscape([self orientation])) {
-        return CGSizeMake(FH_EMOJI_SCREEN_HEIGHT, 200);
+        return CGSizeMake(FH_EMOJI_SCREEN_HEIGHT, self.keyboardHeight);
     } else {
-        return CGSizeMake(FH_EMOJI_SCREEN_WIDTH, 200);
+        return CGSizeMake(FH_EMOJI_SCREEN_WIDTH,  self.keyboardHeight);
     }
 }
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
-//    self.selectedIndex = self.keyboard.contentOffset.x/FH_EMOJI_SCREEN_WIDTH;
-    self.pageControl.currentPage = self.selectedIndex;
+    self.pageControl.currentPage = scrollView.contentOffset.x/self.keyboard.frame.size.width;
 }
 
 #pragma mark - PublicMethod
@@ -231,7 +265,7 @@ static CGFloat const kPageControlHeight = 30.f;
     }
     [view endEditing:YES];
     [view addSubview:self];
-//    [self.keyboard reloadData];
+    [self resetKeyBoardLayout];
     [self makeConstraints];
     if (animated)
     {
@@ -247,17 +281,16 @@ static CGFloat const kPageControlHeight = 30.f;
 }
 
 - (void)hideWithAnimated:(BOOL)animated {
-
     if (animated)
     {
-        self.bottomLayoutConstraint.constant = 200.f;
+        self.bottomLayoutConstraint.constant = self.keyboardHeight;
         [UIView animateWithDuration:0.25f delay:0.f options:7 animations:^{
             [self.superview layoutIfNeeded];
         } completion:^(BOOL finished) {
             [self removeFromSuperview];
         }];
     } else {
-        self.bottomLayoutConstraint.constant = 200.f;
+        self.bottomLayoutConstraint.constant = self.keyboardHeight;
         [self removeFromSuperview];
     }
     self.show = NO;
@@ -268,21 +301,45 @@ static CGFloat const kPageControlHeight = 30.f;
 - (void)handleOrientationDidChange:(NSNotification *)notification {
     if (self.show) {
         [self updateConstraints];
-        if (UIInterfaceOrientationIsLandscape([self orientation])) {
-            self.keyboard.frame = CGRectMake(0, 0, FH_EMOJI_SCREEN_HEIGHT, 200);
-        } else {
-            self.keyboard.frame = CGRectMake(0, 0, FH_EMOJI_SCREEN_WIDTH, 200);
-        }
-        [self.keyboard reloadData];
-        [self.keyboard layoutIfNeeded];
-        if (self.keyboard.indexPathsForVisibleItems.count) {
-            [self.keyboard scrollToItemAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:0] atScrollPosition:UICollectionViewScrollPositionNone animated:NO];
-        }
+        self.selectedIndex = self.pageControl.currentPage;
+        [self resetKeyBoardLayout];
+    }
+    [self.keyboard scrollToItemAtIndexPath:[NSIndexPath indexPathForRow:self.selectedIndex inSection:0] atScrollPosition:UICollectionViewScrollPositionLeft animated:NO];
+}
+
+- (void)handleKeyboardWillShow:(NSNotification *)notification {
+    if (self.show)
+    {
+        [self hideWithAnimated:YES];
     }
 }
 
-- (void)dealloc {
-    [[NSNotificationCenter defaultCenter] removeObserver:self];
+#pragma mark - Helper
+
+- (UIInterfaceOrientation)orientation {
+    return [UIApplication sharedApplication].statusBarOrientation;
+}
+
+- (NSArray *)defaultEmoticons {
+    NSMutableArray *array = [NSMutableArray new];
+    for (int i=0x1F600; i<=0x1F64F; i++) {
+        if (i < 0x1F641 || i > 0x1F644) {
+            int sym = EMOJI_CODE_TO_SYMBOL(i);
+            NSString *emoT = [[NSString alloc] initWithBytes:&sym length:sizeof(sym) encoding:NSUTF8StringEncoding];
+            [array addObject:emoT];
+        }
+    }
+    return array;
+}
+
+- (void)resetKeyBoardLayout {
+    if (UIInterfaceOrientationIsLandscape([self orientation])) {
+        self.keyboard.frame = CGRectMake(0, 0, FH_EMOJI_SCREEN_HEIGHT, self.keyboardHeight);
+    } else {
+        self.keyboard.frame = CGRectMake(0, 0, FH_EMOJI_SCREEN_WIDTH, self.keyboardHeight);
+    }
+    [self.keyboard.collectionViewLayout invalidateLayout];
+    [self.keyboard reloadData];
 }
 
 @end
