@@ -18,6 +18,8 @@
 
 @property (nonatomic, strong) UIColor *pageIndicatorTintColor;
 
+@property (nonatomic, strong) UIImage *deleteButtonImage;
+
 - (instancetype)initWithEmojiClicked:(void(^)(NSString *emoji))emojiHandler
                        deleteClicked:(void(^)())deleteHandler;
 

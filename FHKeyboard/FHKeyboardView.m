@@ -11,8 +11,8 @@
 
 #define EMOJI_CODE_TO_SYMBOL(x) ((((0x808080F0 | (x & 0x3F000) >> 4) | (x & 0xFC0) << 10) | (x & 0x1C0000) << 18) | (x & 0x3F) << 24);
 
-#define FH_EMOJI_SCREEN_WIDTH ([UIScreen mainScreen].bounds.size.width)
-#define FH_EMOJI_SCREEN_HEIGHT ([UIScreen mainScreen].bounds.size.height)
+#define FH_EMOJI_SCREEN_WIDTH ([UIScreen mainScreen].nativeBounds.size.width/[UIScreen mainScreen].nativeScale)
+#define FH_EMOJI_SCREEN_HEIGHT ([UIScreen mainScreen].nativeBounds.size.height/[UIScreen mainScreen].nativeScale)
 
 #pragma mark - FHEmojiKeyboard
 
@@ -52,6 +52,10 @@
 
 @property (nonatomic, strong) NSLayoutConstraint *bottomLayoutConstraint;
 
+@property (nonatomic, assign, getter=isShow) BOOL show;
+
+@property (nonatomic, assign) UIInterfaceOrientation orientation;
+
 @end
 
 static CGFloat const kKeyboardHeight = 200.f;
@@ -76,6 +80,10 @@ static CGFloat const kPageControlHeight = 30.f;
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(handleOrientationDidChange:) name:UIDeviceOrientationDidChangeNotification object:nil];
     }
     return self;
+}
+
+- (UIInterfaceOrientation)orientation {
+    return [UIApplication sharedApplication].statusBarOrientation;
 }
 
 - (NSArray *)defaultEmoticons {
@@ -144,38 +152,12 @@ static CGFloat const kPageControlHeight = 30.f;
     self.keyboard = [[FHEmojiKeyboard alloc] initWithFrame:self.bounds collectionViewLayout:horizontalLayout];
     self.keyboard.dataSource = self;
     self.keyboard.delegate = self;
+    if ([self.keyboard respondsToSelector:@selector(setDirectionalLayoutMargins:)]) {
+        self.keyboard.directionalLayoutMargins =NSDirectionalEdgeInsetsMake(0,0,0,0);
+    }
     [self.keyboard registerClass:[FHKeyboardEmojiCell class] forCellWithReuseIdentifier:@"11"];
     [self addSubview:self.keyboard];
-    
-    NSLayoutConstraint *leftConstraint = [NSLayoutConstraint constraintWithItem:self.keyboard
-                                                                      attribute:NSLayoutAttributeLeft
-                                                                      relatedBy:NSLayoutRelationEqual
-                                                                         toItem:self
-                                                                      attribute:NSLayoutAttributeLeft
-                                                                     multiplier:1
-                                                                       constant:0];
-    NSLayoutConstraint *rightConstraint = [NSLayoutConstraint constraintWithItem:self.keyboard
-                                                                       attribute:NSLayoutAttributeRight
-                                                                       relatedBy:NSLayoutRelationEqual
-                                                                          toItem:self
-                                                                       attribute:NSLayoutAttributeRight
-                                                                      multiplier:1
-                                                                        constant:0];
-    NSLayoutConstraint *topConstraint = [NSLayoutConstraint constraintWithItem:self.keyboard
-                                                               attribute:NSLayoutAttributeTop
-                                                                     relatedBy:NSLayoutRelationEqual
-                                                                  toItem:self
-                                                               attribute:NSLayoutAttributeTop
-                                                              multiplier:1
-                                                                constant:0];
-    NSLayoutConstraint *bottomConstraint = [NSLayoutConstraint constraintWithItem:self.keyboard
-                                                                        attribute:NSLayoutAttributeBottom
-                                                                        relatedBy:NSLayoutRelationEqual
-                                                                           toItem:self
-                                                                        attribute:NSLayoutAttributeBottom
-                                                                       multiplier:1
-                                                                         constant:0];
-    [self addConstraints:@[leftConstraint,rightConstraint,topConstraint,bottomConstraint]];
+    [self makeConstraints];
 }
 
 - (void)setupPageControl {
@@ -229,32 +211,39 @@ static CGFloat const kPageControlHeight = 30.f;
 }
 
 - (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
-    return CGSizeMake(FH_EMOJI_SCREEN_HEIGHT, 200);
+    if (UIInterfaceOrientationIsLandscape([self orientation])) {
+        return CGSizeMake(FH_EMOJI_SCREEN_HEIGHT, 200);
+    } else {
+        return CGSizeMake(FH_EMOJI_SCREEN_WIDTH, 200);
+    }
 }
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
-    self.selectedIndex = self.keyboard.contentOffset.x/FH_EMOJI_SCREEN_WIDTH;
+//    self.selectedIndex = self.keyboard.contentOffset.x/FH_EMOJI_SCREEN_WIDTH;
     self.pageControl.currentPage = self.selectedIndex;
 }
 
 #pragma mark - PublicMethod
 
 - (void)showInView:(UIView *)view animated:(BOOL)animated {
+    if (self.show) {
+        return;
+    }
     [view endEditing:YES];
     [view addSubview:self];
+//    [self.keyboard reloadData];
     [self makeConstraints];
     if (animated)
     {
         [UIView animateWithDuration:0.25f delay:0.f options:7 animations:^{
-            self.bottomLayoutConstraint.constant = 0.f;
-            [self.superview layoutIfNeeded];
+            [self updateConstraints];
         } completion:^(BOOL finished) {
         
         }];
     } else {
-        self.bottomLayoutConstraint.constant = 0.f;
-        [self.superview layoutIfNeeded];
+        [self updateConstraints];
     }
+    self.show = YES;
 }
 
 - (void)hideWithAnimated:(BOOL)animated {
@@ -271,15 +260,25 @@ static CGFloat const kPageControlHeight = 30.f;
         self.bottomLayoutConstraint.constant = 200.f;
         [self removeFromSuperview];
     }
+    self.show = NO;
 }
 
 #pragma mark - HandleNotificaiton
 
 - (void)handleOrientationDidChange:(NSNotification *)notification {
-    [self updateConstraints];
-    self.keyboard.frame = CGRectMake(0, 0, FH_EMOJI_SCREEN_HEIGHT, 200);
-    [self.keyboard reloadData];
-    [self.keyboard selectItemAtIndexPath:[NSIndexPath indexPathForRow:self.selectedIndex inSection:0] animated:NO scrollPosition:UICollectionViewScrollPositionTop];
+    if (self.show) {
+        [self updateConstraints];
+        if (UIInterfaceOrientationIsLandscape([self orientation])) {
+            self.keyboard.frame = CGRectMake(0, 0, FH_EMOJI_SCREEN_HEIGHT, 200);
+        } else {
+            self.keyboard.frame = CGRectMake(0, 0, FH_EMOJI_SCREEN_WIDTH, 200);
+        }
+        [self.keyboard reloadData];
+        [self.keyboard layoutIfNeeded];
+        if (self.keyboard.indexPathsForVisibleItems.count) {
+            [self.keyboard scrollToItemAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:0] atScrollPosition:UICollectionViewScrollPositionNone animated:NO];
+        }
+    }
 }
 
 - (void)dealloc {

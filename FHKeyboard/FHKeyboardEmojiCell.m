@@ -19,7 +19,6 @@
 
 static CGFloat const kEmojiSize = 35.f;
 
-//#define FH_EMOJI_SCREEN_WIDTH ([UIScreen mainScreen].bounds.size.width)
 #define FH_EMOJI_COL_SPACING ((self.bounds.size.width - kEmojiSize * _numOfCols)/(_numOfCols + 1))
 #define FH_EMOJI_Line_SPACING ((self.bounds.size.height - kEmojiSize * 3)/4)
 
@@ -31,7 +30,9 @@ static CGFloat const kTopInsets = 20.f;
     NSAssert(((emojiArray.count + 1) %3 == 0), @"Emoji array count error, make sure that (emojiArray.count -1) %%3 == 0");
     _emojiArray = emojiArray;
     _numOfCols = (_emojiArray.count + 1)/3;
-    [self updateContent];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self updateContent];
+    });
 }
 
 - (void)updateContent {
