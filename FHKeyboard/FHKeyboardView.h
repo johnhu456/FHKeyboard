@@ -8,7 +8,19 @@
 
 #import <UIKit/UIKit.h>
 
-#define FH_IS_IPAD [UIDevice deviceIsIPad]
+@interface FHKeyboardEmojiCategory: NSObject
+
+/**
+ The icon used to indicate this emoji category
+ */
+@property (nonatomic, strong) UIImage *icon;
+
+/**
+ The emojis in this category
+ */
+@property (nonatomic, strong) NSArray<NSString *> *emojis;
+
+@end
 
 @interface FHKeyboardView : UIView
 

@@ -63,8 +63,7 @@ static CGFloat const kNumberOfLine = 3.f;
                 break;
             }
         }
-        if (addedButtons.count == self.emojiArray.count)
-        {
+        if (addedButtons.count == self.emojiArray.count) {
             UIButton *deleteButton = [UIButton buttonWithType:UIButtonTypeCustom];
             [deleteButton setImage:self.deleteButtonImage forState:UIControlStateNormal];
             deleteButton.frame = CGRectMake(FH_EMOJI_COL_SPACING + (_numOfCols - 1) * (FH_EMOJI_COL_SPACING + FH_EMOJI_SIZE), kTopInsets + (kNumberOfLine - 1)* (FH_EMOJI_Line_SPACING + FH_EMOJI_SIZE), FH_EMOJI_SIZE, FH_EMOJI_SIZE);
@@ -77,17 +76,75 @@ static CGFloat const kNumberOfLine = 3.f;
     self.emojiButtons = [addedButtons copy];
 }
 - (void)handleEmojiButtonClicked:(UIButton *)sender {
-    if (self.handleEmojiClicked)
-    {
+    if (self.handleEmojiClicked) {
         self.handleEmojiClicked(sender.titleLabel.text);
     }
 }
 
 - (void)handleDeleteButtonOnClicked:(UIButton *)sender {
-    if (self.handleDeleteClicked)
-    {
+    if (self.handleDeleteClicked) {
         self.handleDeleteClicked();
     }
 }
 
+@end
+
+@interface FHKeyboardCategoryCell()
+
+@property (nonatomic, strong) UIImageView *imageView;
+
+@end
+@implementation FHKeyboardCategoryCell
+
+- (instancetype)initWithFrame:(CGRect)frame {
+    if (self = [super initWithFrame:frame]) {
+        [self setupImageView];
+    }
+    return self;
+}
+
+- (void)setupImageView
+{
+    self.imageView = [[UIImageView alloc] initWithFrame:self.bounds];
+    self.imageView.contentMode = UIViewContentModeScaleAspectFit;
+    [self.contentView addSubview:self.imageView];
+    NSLayoutConstraint *leftConstraint = [NSLayoutConstraint constraintWithItem:self
+                                                                      attribute:NSLayoutAttributeLeft
+                                                                      relatedBy:NSLayoutRelationEqual
+                                                                         toItem:self.contentView
+                                                                      attribute:NSLayoutAttributeLeft
+                                                                     multiplier:1
+                                                                       constant:0];
+    NSLayoutConstraint *rightConstraint = [NSLayoutConstraint constraintWithItem:self
+                                                                       attribute:NSLayoutAttributeRight
+                                                                       relatedBy:NSLayoutRelationEqual
+                                                                          toItem:self.contentView
+                                                                       attribute:NSLayoutAttributeRight
+                                                                      multiplier:1
+                                                                        constant:0];
+    NSLayoutConstraint *bottomLayoutConstraint = [NSLayoutConstraint constraintWithItem:self
+                                                               attribute:NSLayoutAttributeBottom
+                                                               relatedBy:NSLayoutRelationEqual
+                                                                  toItem:self.contentView
+                                                               attribute:NSLayoutAttributeBottom
+                                                              multiplier:1
+                                                                constant:0];
+    NSLayoutConstraint *topLayoutConstraint = [NSLayoutConstraint constraintWithItem:self
+                                                                        attribute:NSLayoutAttributeTop
+                                                                        relatedBy:NSLayoutRelationEqual
+                                                                           toItem:self.contentView
+                                                                        attribute:NSLayoutAttributeTop
+                                                                       multiplier:1
+                                                                         constant:0];
+    [self addConstraints:@[leftConstraint,rightConstraint,bottomLayoutConstraint,topLayoutConstraint]];
+}
+
+- (void)setCategoryIcon:(UIImage *)categoryIcon {
+    _categoryIcon = categoryIcon;
+    self.imageView.image = _categoryIcon;
+}
+
+- (void)setSelected:(BOOL)selected {
+    [super setSelected:selected];
+}
 @end

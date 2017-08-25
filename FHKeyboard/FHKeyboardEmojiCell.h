@@ -8,6 +8,7 @@
 
 #import <UIKit/UIKit.h>
 
+
 @interface FHKeyboardEmojiCell : UICollectionViewCell
 
 @property (nonatomic, assign) CGFloat numOfCols;
@@ -19,5 +20,11 @@
 @property (nonatomic, copy) void(^handleEmojiClicked)(NSString *emoji);
 
 @property (nonatomic, copy) void(^handleDeleteClicked)();
+
+@end
+
+@interface FHKeyboardCategoryCell : UICollectionViewCell
+
+@property (nonatomic, strong) UIImage *categoryIcon;
 
 @end

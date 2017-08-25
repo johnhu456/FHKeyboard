@@ -25,6 +25,7 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    self.view.backgroundColor = [UIColor grayColor];
     self.textField = [[UITextField alloc] initWithFrame:CGRectMake(100, 100, 200, 60)];
     self.textField.borderStyle = UITextBorderStyleRoundedRect;
     [self.view addSubview:self.textField];
@@ -50,7 +51,7 @@
         }];
         self.keyboardView = keyboardView;
     }
-    self.keyboardView.backgroundColor = [UIColor grayColor];
+    self.keyboardView.backgroundColor = [UIColor whiteColor];
 //    self.keyboardView.keyboardHeight = 300.f;
     self.keyboardView.deleteButtonImage = [UIImage imageNamed:@"file_toolbar_delete"];
     [self.keyboardView showInView:self.view animated:YES];
