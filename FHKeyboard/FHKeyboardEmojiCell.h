@@ -8,10 +8,11 @@
 
 #import <UIKit/UIKit.h>
 
-
 @interface FHKeyboardEmojiCell : UICollectionViewCell
 
-@property (nonatomic, assign) CGFloat numOfCols;
+@property (nonatomic, assign) NSUInteger numOfCols;
+
+@property (nonatomic, assign) NSUInteger numOfLines;
 
 @property (nonatomic, strong) NSArray<NSString *> *emojiArray;
 

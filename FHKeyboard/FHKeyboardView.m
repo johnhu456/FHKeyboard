@@ -15,7 +15,7 @@
 
 #define FH_EMOJI_SCREEN_WIDTH ([UIScreen mainScreen].nativeBounds.size.width/[UIScreen mainScreen].nativeScale)
 #define FH_EMOJI_SCREEN_HEIGHT ([UIScreen mainScreen].nativeBounds.size.height/[UIScreen mainScreen].nativeScale)
-#define FH_EMOJI_COUNT_OF_EACHPAGE (self.numOfCols * self.numOfLines - 1)
+#define FH_EMOJI_COUNT_OF_EACHPAGE (self.numOfCols * self.numOfLines)
 #define FH_EMOJI_CATEGORY_SIZE 60.f
 #define FH_EMOJI_CATEGORY_HEIGHT 40.f
 
@@ -40,7 +40,6 @@
         self.backgroundColor = [UIColor clearColor];
         self.showsHorizontalScrollIndicator = NO;
         self.pagingEnabled = YES;
-        
     }
     return self;
 }
@@ -60,8 +59,6 @@
         self.scrollDirection = UICollectionViewScrollDirectionHorizontal;
         self.minimumLineSpacing = 0.f;
         self.minimumInteritemSpacing = 0.f;
-        self.itemSize = CGSizeMake(FH_EMOJI_SCREEN_WIDTH, 200);
-        self.estimatedItemSize = CGSizeMake(FH_EMOJI_SCREEN_WIDTH, 200);
     }
     return self;
 }
@@ -73,30 +70,29 @@
 @interface FHKeyboardView()<UICollectionViewDelegate, UICollectionViewDataSource,UICollectionViewDelegateFlowLayout>
 
 //For categories
-@property (nonatomic, strong) NSArray <FHKeyboardEmojiCategory *> *categories;
 @property (nonatomic, strong) UICollectionView *categoriesCollectionView;
 
+//For state mark
 @property (nonatomic, assign) NSInteger selectedSection;
-
 @property (nonatomic, assign) NSInteger selectedIndex;
+@property (nonatomic, assign, getter=isShow) BOOL show;
+@property (nonatomic, assign) UIInterfaceOrientation orientation;
 
+//UI Component
 @property (nonatomic, strong) FHEmojiKeyboard *keyboard;
-
+@property (nonatomic, strong) UIButton *deleteButton;
 @property (nonatomic, strong) UIPageControl *pageControl;
-
-@property (nonatomic, copy) void(^handleEmojiClicked)(NSString *emoji);
-
-@property (nonatomic, copy) void(^handleDeleteClicked)();
-
 @property (nonatomic, strong) NSLayoutConstraint *bottomLayoutConstraint;
 
-@property (nonatomic, assign, getter=isShow) BOOL show;
-
-@property (nonatomic, assign) UIInterfaceOrientation orientation;
+//Action block
+@property (nonatomic, copy) void(^handleEmojiClicked)(NSString *emoji);
+@property (nonatomic, copy) void(^handleDeleteClicked)();
 
 @end
 
 static CGFloat const kPageControlHeight = 30.f;
+static NSString *const kEmojiCellReuseIdentifier = @"kEmojiCellReuseIdentifier";
+static NSString *const kCategoryCellReuseIdentifier = @"kCategoryCellReuseIdentifier";
 
 @implementation FHKeyboardView
 
@@ -108,6 +104,7 @@ static CGFloat const kPageControlHeight = 30.f;
         [self setupKeyboard];
         [self setupPageControl];
         [self setupCategoriesView];
+        [self setupDeleteButton];
         
         self.translatesAutoresizingMaskIntoConstraints = NO;
         self.handleDeleteClicked = deleteHandler;
@@ -138,7 +135,11 @@ static CGFloat const kPageControlHeight = 30.f;
     }
     
     self.backgroundColor = [UIColor whiteColor];
-    self.categories = [self defaultEmoticons];
+    _categories = [self defaultEmoticons];
+    
+    self.currentPageIndicatorTintColor = [UIColor blackColor];
+    self.pageIndicatorTintColor = [UIColor redColor];
+    
 }
 
 - (void)setupCategoriesView {
@@ -154,7 +155,8 @@ static CGFloat const kPageControlHeight = 30.f;
     self.categoriesCollectionView.layer.borderWidth = 1.f;
     self.categoriesCollectionView.layer.borderColor = [UIColor lightGrayColor].CGColor;
     [self.categoriesCollectionView setTranslatesAutoresizingMaskIntoConstraints:NO];
-    [self.categoriesCollectionView registerClass:[FHKeyboardCategoryCell class] forCellWithReuseIdentifier:@"cc"];
+    [self.categoriesCollectionView selectItemAtIndexPath:[NSIndexPath indexPathForRow:self.selectedSection inSection:0] animated:NO scrollPosition:UICollectionViewScrollPositionNone];
+    [self.categoriesCollectionView registerClass:[FHKeyboardCategoryCell class] forCellWithReuseIdentifier:kCategoryCellReuseIdentifier];
     [self addSubview:self.categoriesCollectionView];
     NSLayoutConstraint *leftConstraint = [NSLayoutConstraint constraintWithItem:self.categoriesCollectionView
                                                                       attribute:NSLayoutAttributeLeft
@@ -185,6 +187,44 @@ static CGFloat const kPageControlHeight = 30.f;
                                                                        multiplier:1
                                                                          constant:FH_EMOJI_CATEGORY_HEIGHT];
     [self addConstraints:@[leftConstraint,rightConstraint,bottomConstraint,heightConstraint]];
+}
+
+- (void)setupDeleteButton {
+    self.deleteButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    self.deleteButton.frame = CGRectMake(0, 0, FH_EMOJI_CATEGORY_SIZE, FH_EMOJI_CATEGORY_HEIGHT);
+    self.deleteButton.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.deleteButton setImage:self.deleteButtonImage forState:UIControlStateNormal];
+    [self.deleteButton addTarget:self action:@selector(handleDeleteOnClicked:) forControlEvents:UIControlEventTouchUpInside];
+    [self addSubview:self.deleteButton];
+    NSLayoutConstraint *rightConstraint = [NSLayoutConstraint constraintWithItem:self.deleteButton
+                                                                      attribute:NSLayoutAttributeRight
+                                                                      relatedBy:NSLayoutRelationEqual
+                                                                         toItem:self
+                                                                      attribute:NSLayoutAttributeRight
+                                                                     multiplier:1
+                                                                       constant:0];
+    NSLayoutConstraint *widthConstraint = [NSLayoutConstraint constraintWithItem:self.deleteButton
+                                                                       attribute:NSLayoutAttributeWidth
+                                                                       relatedBy:NSLayoutRelationEqual
+                                                                          toItem:self
+                                                                       attribute:NSLayoutAttributeWidth
+                                                                      multiplier:0
+                                                                        constant:FH_EMOJI_CATEGORY_SIZE];
+    NSLayoutConstraint *bottomConstraint = [NSLayoutConstraint constraintWithItem:self.deleteButton
+                                                                        attribute:NSLayoutAttributeBottom
+                                                                        relatedBy:NSLayoutRelationEqual
+                                                                           toItem:self
+                                                                        attribute:NSLayoutAttributeBottom
+                                                                       multiplier:1
+                                                                         constant:0];
+    NSLayoutConstraint *heightConstraint = [NSLayoutConstraint constraintWithItem:self.deleteButton
+                                                                        attribute:NSLayoutAttributeHeight
+                                                                        relatedBy:NSLayoutRelationEqual
+                                                                           toItem:self.categoriesCollectionView
+                                                                        attribute:NSLayoutAttributeHeight
+                                                                       multiplier:1
+                                                                         constant:0];
+    [self addConstraints:@[rightConstraint,widthConstraint,bottomConstraint,heightConstraint]];
 }
 
 - (void)makeConstraints {
@@ -233,39 +273,55 @@ static CGFloat const kPageControlHeight = 30.f;
 - (void)setupKeyboard {
     FHEmojiKeyboardLayout *horizontalLayout = [[FHEmojiKeyboardLayout alloc] init];
     self.keyboard = [[FHEmojiKeyboard alloc] initWithFrame:self.bounds collectionViewLayout:horizontalLayout];
+    horizontalLayout.itemSize = self.keyboard.bounds.size;
     self.keyboard.dataSource = self;
     self.keyboard.delegate = self;
-    [self.keyboard registerClass:[FHKeyboardEmojiCell class] forCellWithReuseIdentifier:@"11"];
+    [self.keyboard registerClass:[FHKeyboardEmojiCell class] forCellWithReuseIdentifier:kEmojiCellReuseIdentifier];
     [self addSubview:self.keyboard];
     [self makeConstraints];
 }
 
 - (void)setupPageControl {
     FHKeyboardEmojiCategory *currentCategory = self.categories[self.selectedSection];
-    self.pageControl = [[UIPageControl alloc] initWithFrame:CGRectMake(0, self.keyboardHeight - kPageControlHeight - FH_EMOJI_CATEGORY_HEIGHT , FH_EMOJI_SCREEN_WIDTH, kPageControlHeight)];
+    self.pageControl = [[UIPageControl alloc] initWithFrame:CGRectMake(0, self.keyboardHeight - kPageControlHeight - FH_EMOJI_CATEGORY_HEIGHT + 5.f, FH_EMOJI_SCREEN_WIDTH, kPageControlHeight)];
     CGFloat  overCount = currentCategory.emojis.count % FH_EMOJI_COUNT_OF_EACHPAGE;
     self.pageControl.numberOfPages = overCount == 0 ? currentCategory.emojis.count / FH_EMOJI_COUNT_OF_EACHPAGE : currentCategory.emojis.count / FH_EMOJI_COUNT_OF_EACHPAGE + 1;
     self.pageControl.currentPageIndicatorTintColor = self.currentPageIndicatorTintColor;
     self.pageControl.pageIndicatorTintColor = self.pageIndicatorTintColor;
     self.pageControl.hidden = self.hidePageControl;
+    self.pageControl.userInteractionEnabled = NO;
     [self addSubview:self.pageControl];
-}
-
-#pragma mark - PublicSetter
-
-- (void)setHidePageControl:(BOOL)hidePageControl {
-    _hidePageControl = hidePageControl;
-    self.pageControl.hidden = _hidePageControl;
-}
-
-- (void)setCurrentPageIndicatorTintColor:(UIColor *)currentPageIndicatorTintColor {
-    _currentPageIndicatorTintColor = currentPageIndicatorTintColor;
-    self.pageControl.currentPageIndicatorTintColor = _currentPageIndicatorTintColor;
-}
-
-- (void)setPageIndicatorTintColor:(UIColor *)pageIndicatorTintColor {
-    _pageIndicatorTintColor = pageIndicatorTintColor;
-    self.pageControl.pageIndicatorTintColor = _pageIndicatorTintColor;
+    [self.pageControl setTranslatesAutoresizingMaskIntoConstraints:NO];
+    NSLayoutConstraint *rightConstraint = [NSLayoutConstraint constraintWithItem:self.pageControl
+                                                                       attribute:NSLayoutAttributeRight
+                                                                       relatedBy:NSLayoutRelationEqual
+                                                                          toItem:self
+                                                                       attribute:NSLayoutAttributeRight
+                                                                      multiplier:1
+                                                                        constant:0];
+    NSLayoutConstraint *leftConstraint = [NSLayoutConstraint constraintWithItem:self.pageControl
+                                                                       attribute:NSLayoutAttributeLeft
+                                                                       relatedBy:NSLayoutRelationEqual
+                                                                          toItem:self
+                                                                       attribute:NSLayoutAttributeLeft
+                                                                      multiplier:1
+                                                                        constant:0];
+    NSLayoutConstraint *bottomConstraint = [NSLayoutConstraint constraintWithItem:self.pageControl
+                                                                        attribute:NSLayoutAttributeBottom
+                                                                        relatedBy:NSLayoutRelationEqual
+                                                                           toItem:self
+                                                                        attribute:NSLayoutAttributeBottom
+                                                                       multiplier:1
+                                                                         constant:5.f - FH_EMOJI_CATEGORY_HEIGHT];
+    NSLayoutConstraint *heightConstraint = [NSLayoutConstraint constraintWithItem:self.pageControl
+                                                                        attribute:NSLayoutAttributeHeight
+                                                                        relatedBy:NSLayoutRelationEqual
+                                                                           toItem:nil
+                                                                        attribute:NSLayoutAttributeHeight
+                                                                       multiplier:1
+                                                                         constant:kPageControlHeight];
+    [self addConstraints:@[rightConstraint,leftConstraint,bottomConstraint,heightConstraint]];
+    
 }
 
 #pragma mark - UICollectionViewDelegate/DataSource
@@ -287,12 +343,15 @@ static CGFloat const kPageControlHeight = 30.f;
 
 - (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
     if ([self isCategoriesCollectionView:collectionView]) {
-        FHKeyboardCategoryCell *categoryCell = [collectionView dequeueReusableCellWithReuseIdentifier:@"cc" forIndexPath:indexPath];
+        FHKeyboardCategoryCell *categoryCell = [collectionView dequeueReusableCellWithReuseIdentifier:kCategoryCellReuseIdentifier forIndexPath:indexPath];
         categoryCell.categoryIcon = [UIImage imageNamed:[NSString stringWithFormat:@"%ld",(long)indexPath.row]];
         return categoryCell;
     } else {
         FHKeyboardEmojiCategory *currentCategory = self.categories[indexPath.section];
-        FHKeyboardEmojiCell *emojiCell = [self.keyboard dequeueReusableCellWithReuseIdentifier:@"11" forIndexPath:indexPath];
+        FHKeyboardEmojiCell *emojiCell = [self.keyboard dequeueReusableCellWithReuseIdentifier:kEmojiCellReuseIdentifier forIndexPath:indexPath];
+        emojiCell.numOfCols = self.numOfCols;
+        emojiCell.numOfLines = self.numOfLines;
+        
         NSArray *emojiArray;
         if ((indexPath.row + 1) * FH_EMOJI_COUNT_OF_EACHPAGE > currentCategory.emojis.count)
         {
@@ -308,6 +367,15 @@ static CGFloat const kPageControlHeight = 30.f;
     }
 }
 
+- (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
+    if ([self isCategoriesCollectionView:collectionView]) {
+        [self.keyboard scrollToItemAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:indexPath.row] atScrollPosition:UICollectionViewScrollPositionRight animated:YES];
+        self.selectedIndex = 0;
+        self.selectedSection = indexPath.row;
+        [self updatePageControl];
+    }
+}
+
 - (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
     if ([self isCategoriesCollectionView:collectionView]) {
         return CGSizeMake(FH_EMOJI_CATEGORY_SIZE, FH_EMOJI_CATEGORY_HEIGHT);
@@ -320,13 +388,63 @@ static CGFloat const kPageControlHeight = 30.f;
     }
 }
 
-- (void)scrollViewDidScroll:(UIScrollView *)scrollView {
-    self.pageControl.currentPage = scrollView.contentOffset.x/self.keyboard.frame.size.width;
+- (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView {
+    CGPoint offset = CGPointMake(scrollView.contentOffset.x + 1, scrollView.contentOffset.y + 1);
+    self.selectedIndex = [self.keyboard indexPathForItemAtPoint:offset].row;
+    self.selectedSection = [self.keyboard indexPathForItemAtPoint:offset].section;
+    [self.categoriesCollectionView selectItemAtIndexPath:[NSIndexPath indexPathForRow:self.selectedSection inSection:0] animated:NO scrollPosition:UICollectionViewScrollPositionNone];
+    [self updatePageControl];
 }
 
-- (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView
-{
-    NSLog(@"%@",self.keyboard.visibleCells);
+#pragma mark - PublicSetter
+
+- (void)setCategories:(NSArray<FHKeyboardEmojiCategory *> *)categories {
+    _categories = categories;
+    [self.categoriesCollectionView.collectionViewLayout invalidateLayout];
+    [self.categoriesCollectionView reloadData];
+    [self.keyboard.collectionViewLayout invalidateLayout];
+    [self.keyboard reloadData];
+}
+
+- (void)setKeyboardHeight:(CGFloat)keyboardHeight {
+    _keyboardHeight = keyboardHeight;
+    [self layoutIfNeeded];
+}
+
+- (void)setNumOfLines:(NSUInteger)numOfLines {
+    _numOfLines = numOfLines;
+    [self.categoriesCollectionView.collectionViewLayout invalidateLayout];
+    [self.categoriesCollectionView reloadData];
+    [self.keyboard.collectionViewLayout invalidateLayout];
+    [self.keyboard reloadData];
+}
+
+- (void)setNumOfCols:(NSUInteger)numOfCols {
+    _numOfCols = numOfCols;
+    [self.categoriesCollectionView.collectionViewLayout invalidateLayout];
+    [self.categoriesCollectionView reloadData];
+    [self.keyboard.collectionViewLayout invalidateLayout];
+    [self.keyboard reloadData];
+}
+
+- (void)setHidePageControl:(BOOL)hidePageControl {
+    _hidePageControl = hidePageControl;
+    self.pageControl.hidden = _hidePageControl;
+}
+
+- (void)setCurrentPageIndicatorTintColor:(UIColor *)currentPageIndicatorTintColor {
+    _currentPageIndicatorTintColor = currentPageIndicatorTintColor;
+    self.pageControl.currentPageIndicatorTintColor = _currentPageIndicatorTintColor;
+}
+
+- (void)setPageIndicatorTintColor:(UIColor *)pageIndicatorTintColor {
+    _pageIndicatorTintColor = pageIndicatorTintColor;
+    self.pageControl.pageIndicatorTintColor = _pageIndicatorTintColor;
+}
+
+- (void)setDeleteButtonImage:(UIImage *)deleteButtonImage {
+    _deleteButtonImage = deleteButtonImage;
+    [self.deleteButton setImage:deleteButtonImage forState:UIControlStateNormal];
 }
 
 #pragma mark - PublicMethod
@@ -368,6 +486,15 @@ static CGFloat const kPageControlHeight = 30.f;
     self.show = NO;
 }
 
+#pragma mark - WidgetsAction
+
+- (void)handleDeleteOnClicked:(UIButton *)sender
+{
+    if (self.handleDeleteClicked) {
+        self.handleDeleteClicked();
+    }
+}
+
 #pragma mark - HandleNotificaiton
 
 - (void)handleOrientationDidChange:(NSNotification *)notification {
@@ -396,6 +523,14 @@ static CGFloat const kPageControlHeight = 30.f;
     return [UIApplication sharedApplication].statusBarOrientation;
 }
 
+- (void)updatePageControl {
+    FHKeyboardEmojiCategory *currentCategory = self.categories[self.selectedSection];
+    CGFloat  overCount = currentCategory.emojis.count % FH_EMOJI_COUNT_OF_EACHPAGE;
+    self.pageControl.numberOfPages = overCount == 0 ? currentCategory.emojis.count / FH_EMOJI_COUNT_OF_EACHPAGE : currentCategory.emojis.count / FH_EMOJI_COUNT_OF_EACHPAGE + 1;
+    self.pageControl.currentPage = self.selectedIndex;
+}
+
+#warning need config emojis more accurate
 - (NSArray *)defaultEmoticons {
     NSMutableArray *aArray = [NSMutableArray new];
     for (int i=0x1F600; i<=0x1F64F; i++) {
@@ -412,57 +547,49 @@ static CGFloat const kPageControlHeight = 30.f;
     aCategory.emojis = aArray;
     
     NSMutableArray *bArray = [NSMutableArray new];
-    for (int i=0x2702; i<=0x27B0; i++) {
-        //        if (i < 0x2703 || i > 0x27B0) {
+    for (int i=0x1F600; i<=0x1F64F; i++) {
         int sym = EMOJI_CODE_TO_SYMBOL(i);
         NSString *emoT = [[NSString alloc] initWithBytes:&sym length:sizeof(sym) encoding:NSUTF8StringEncoding];
         if (emoT)
         {
             [bArray addObject:emoT];
         }
-        //        }
     }
     FHKeyboardEmojiCategory *bCategory = [[FHKeyboardEmojiCategory alloc] init];
     bCategory.emojis = bArray;
     
     NSMutableArray *cArray = [NSMutableArray new];
     for (int i=0x1F680; i<=0x1F6C0; i++) {
-        //        if (i < 0x1F680 || i > 0x1F6C0) {
         int sym = EMOJI_CODE_TO_SYMBOL(i);
         NSString *emoT = [[NSString alloc] initWithBytes:&sym length:sizeof(sym) encoding:NSUTF8StringEncoding];
         if (emoT)
         {
             [cArray addObject:emoT];
         }
-        //        }
     }
     FHKeyboardEmojiCategory *cCategory = [[FHKeyboardEmojiCategory alloc] init];
     cCategory.emojis = cArray;
     
     NSMutableArray *dArray = [NSMutableArray new];
     for (int i=0x1F170; i<=0x1F251; i++) {
-        //        if (i < 0x1F680 || i > 0x1F6C0) {
         int sym = EMOJI_CODE_TO_SYMBOL(i);
         NSString *emoT = [[NSString alloc] initWithBytes:&sym length:sizeof(sym) encoding:NSUTF8StringEncoding];
         if (emoT)
         {
             [dArray addObject:emoT];
         }
-        //        }
     }
     FHKeyboardEmojiCategory *dCategory = [[FHKeyboardEmojiCategory alloc] init];
     dCategory.emojis = dArray;
     
     NSMutableArray *eArray = [NSMutableArray new];
     for (int i=0x1F600; i<=0x1F64F; i++) {
-        //        if (i < 0x1F680 || i > 0x1F6C0) {
         int sym = EMOJI_CODE_TO_SYMBOL(i);
         NSString *emoT = [[NSString alloc] initWithBytes:&sym length:sizeof(sym) encoding:NSUTF8StringEncoding];
         if (emoT)
         {
             [eArray addObject:emoT];
         }
-        //        }
     }
     FHKeyboardEmojiCategory *eCategory = [[FHKeyboardEmojiCategory alloc] init];
     eCategory.emojis = eArray;

@@ -24,25 +24,64 @@
 
 @interface FHKeyboardView : UIView
 
+/**
+ DataSource of the emoji,
+ @discussion Categories has value in default once FHKeyboardView get initliazed, you can also set it to load your own emojis
+ */
+@property (nonatomic, strong) NSArray <FHKeyboardEmojiCategory *> *categories;
+
+/**
+ Emoji keyboard's height, default is 216
+ */
 @property (nonatomic, assign) CGFloat keyboardHeight;
-
+/**
+ Num of emoji lines,default is 3
+ */
 @property (nonatomic, assign) NSUInteger numOfLines;
-
+/**
+ Num of emoji cols, default is 8 in iPhone, 10 in iPad
+ */
 @property (nonatomic, assign) NSUInteger numOfCols;
-
+/**
+ Hide page control,default is NO
+ */
 @property (nonatomic, assign) BOOL hidePageControl;
-
+/**
+ Pagecontrol's current page indicator color
+ */
 @property (nonatomic, strong) UIColor *currentPageIndicatorTintColor;
-
+/**
+ Pagecontrol's other page indicator color
+ */
 @property (nonatomic, strong) UIColor *pageIndicatorTintColor;
-
+/**
+ Delete button's indicator image
+ */
 @property (nonatomic, strong) UIImage *deleteButtonImage;
 
+/**
+ Initialize method
+
+ @param emojiHandler A block be excuted when selected a emoji
+ @param deleteHandler A block be excuted when delete button tapped
+ @return FHKeyboardView
+ */
 - (instancetype)initWithEmojiClicked:(void(^)(NSString *emoji))emojiHandler
                        deleteClicked:(void(^)())deleteHandler;
 
+/**
+ Show the emoji keyboard
+
+ @param view Where the keyboard will show
+ @param animated Show with animated or not
+ */
 - (void)showInView:(UIView *)view animated:(BOOL)animated;
 
+/**
+ Hide the emoji keyboard
+
+ @param animated Hide with animated or not
+ */
 - (void)hideWithAnimated:(BOOL)animated;
 
 @end
