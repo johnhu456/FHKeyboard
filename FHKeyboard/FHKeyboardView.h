@@ -25,7 +25,7 @@
 @interface FHKeyboardView : UIView
 
 /**
- DataSource of the emoji,
+ Data source of the emoji,
  @discussion Categories has value in default once FHKeyboardView get initliazed, you can also set it to load your own emojis
  */
 @property (nonatomic, strong) NSArray <FHKeyboardEmojiCategory *> *categories;
@@ -54,6 +54,7 @@
  Pagecontrol's other page indicator color
  */
 @property (nonatomic, strong) UIColor *pageIndicatorTintColor;
+
 /**
  Delete button's indicator image
  */

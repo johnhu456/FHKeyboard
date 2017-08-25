@@ -500,10 +500,9 @@ static NSString *const kCategoryCellReuseIdentifier = @"kCategoryCellReuseIdenti
 - (void)handleOrientationDidChange:(NSNotification *)notification {
     if (self.show) {
         [self updateConstraints];
-        self.selectedIndex = self.pageControl.currentPage;
         [self resetKeyBoardLayout];
     }
-    [self.keyboard scrollToItemAtIndexPath:[NSIndexPath indexPathForRow:self.selectedIndex inSection:0] atScrollPosition:UICollectionViewScrollPositionLeft animated:NO];
+    [self.keyboard scrollToItemAtIndexPath:[NSIndexPath indexPathForRow:self.selectedIndex inSection:self.selectedSection] atScrollPosition:UICollectionViewScrollPositionLeft animated:NO];
 }
 
 - (void)handleKeyboardWillShow:(NSNotification *)notification {
