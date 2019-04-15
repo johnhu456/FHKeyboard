@@ -20,6 +20,14 @@
  */
 @property (nonatomic, strong) NSArray<NSString *> *emojis;
 
+/**
+ Get an emoji category
+ 
+ @param icon Category icon
+ @param emojis Emojis in this category
+ */
++ (instancetype)categoryWithIcon:(UIImage *)icon emojis:(NSArray<NSString *> *)emojis;
+
 @end
 
 @interface FHKeyboardView : UIView
@@ -62,7 +70,7 @@
 
 /**
  Initialize method
-
+ 
  @param emojiHandler A block be excuted when selected a emoji
  @param deleteHandler A block be excuted when delete button tapped
  @return FHKeyboardView
@@ -72,7 +80,7 @@
 
 /**
  Show the emoji keyboard
-
+ 
  @param view Where the keyboard will show
  @param animated Show with animated or not
  */
@@ -80,9 +88,23 @@
 
 /**
  Hide the emoji keyboard
-
+ 
  @param animated Hide with animated or not
  */
 - (void)hideWithAnimated:(BOOL)animated;
 
+/**
+ Reset keyboard's layout
+ */
+- (void)resetKeyBoardLayout;
+
+/**
+ Convert an unicode to string
+ 
+ @param code The unicode
+ @return Emoji result
+ */
++ (NSString *)getEmojiStringFromUnicode:(UInt64)code;
+
++ (NSString *)getEmojiFromUnicodeString:(NSString *)code;
 @end

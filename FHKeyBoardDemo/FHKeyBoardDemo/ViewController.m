@@ -50,12 +50,10 @@
             self.textField.text = [self.textField.text substringToIndex:self.textField.text.length - 2];
         }];
         self.keyboardView = keyboardView;
+        self.keyboardView.backgroundColor = [UIColor whiteColor];
+        self.keyboardView.deleteButtonImage = [UIImage imageNamed:@"file_toolbar_delete"];
+        self.keyboardView.categories = [self defaultEmoticons];
     }
-    self.keyboardView.backgroundColor = [UIColor whiteColor];
-    self.keyboardView.deleteButtonImage = [UIImage imageNamed:@"file_toolbar_delete"];
-//    self.keyboardView.deleteButtonImage = [UIImage imageNamed:@"file_toolbar_delete"];
-//
-//    [UIImage imageNamed:@"file_toolbar_delete"];
     [self.keyboardView showInView:self.view animated:YES];
 }
 
@@ -71,8 +69,7 @@
             }
         }
     }
-    FHKeyboardEmojiCategory *aCategory = [[FHKeyboardEmojiCategory alloc] init];
-    aCategory.emojis = aArray;
+    FHKeyboardEmojiCategory *aCategory = [FHKeyboardEmojiCategory categoryWithIcon:[UIImage imageNamed:@"0"] emojis:aArray];
     
     NSMutableArray *bArray = [NSMutableArray new];
     for (int i=0x1F600; i<=0x1F64F; i++) {
@@ -83,8 +80,7 @@
             [bArray addObject:emoT];
         }
     }
-    FHKeyboardEmojiCategory *bCategory = [[FHKeyboardEmojiCategory alloc] init];
-    bCategory.emojis = bArray;
+    FHKeyboardEmojiCategory *bCategory = [FHKeyboardEmojiCategory categoryWithIcon:[UIImage imageNamed:@"1"] emojis:bArray];
     
     NSMutableArray *cArray = [NSMutableArray new];
     for (int i=0x1F680; i<=0x1F6C0; i++) {
@@ -95,8 +91,7 @@
             [cArray addObject:emoT];
         }
     }
-    FHKeyboardEmojiCategory *cCategory = [[FHKeyboardEmojiCategory alloc] init];
-    cCategory.emojis = cArray;
+    FHKeyboardEmojiCategory *cCategory = [FHKeyboardEmojiCategory categoryWithIcon:[UIImage imageNamed:@"2"] emojis:cArray];
     
     NSMutableArray *dArray = [NSMutableArray new];
     for (int i=0x1F170; i<=0x1F251; i++) {
@@ -107,8 +102,7 @@
             [dArray addObject:emoT];
         }
     }
-    FHKeyboardEmojiCategory *dCategory = [[FHKeyboardEmojiCategory alloc] init];
-    dCategory.emojis = dArray;
+    FHKeyboardEmojiCategory *dCategory = [FHKeyboardEmojiCategory categoryWithIcon:[UIImage imageNamed:@"3"] emojis:dArray];
     
     NSMutableArray *eArray = [NSMutableArray new];
     for (int i=0x1F600; i<=0x1F64F; i++) {
@@ -119,16 +113,13 @@
             [eArray addObject:emoT];
         }
     }
-    FHKeyboardEmojiCategory *eCategory = [[FHKeyboardEmojiCategory alloc] init];
-    eCategory.emojis = eArray;
-    return @[dCategory,bCategory,cCategory,eCategory];
+    FHKeyboardEmojiCategory *eCategory = [FHKeyboardEmojiCategory categoryWithIcon:[UIImage imageNamed:@"4"] emojis:eArray];
+    return @[aCategory,bCategory,cCategory,dCategory,eCategory];
 }
 
 
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     [self.keyboardView hideWithAnimated:YES];
-//    self.keyboardView.keyboardHeight = 300.f;
-    self.keyboardView.categories = [self defaultEmoticons];
 }
 
 - (void)didReceiveMemoryWarning {

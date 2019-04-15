@@ -9,19 +9,26 @@
 #import "FHKeyboardView.h"
 #import "FHKeyboardEmojiCell.h"
 
-#define FH_IS_IPAD [UIDevice deviceIsIPad]
-
 #define EMOJI_CODE_TO_SYMBOL(x) ((((0x808080F0 | (x & 0x3F000) >> 4) | (x & 0xFC0) << 10) | (x & 0x1C0000) << 18) | (x & 0x3F) << 24);
 
 #define FH_EMOJI_SCREEN_WIDTH ([UIScreen mainScreen].nativeBounds.size.width/[UIScreen mainScreen].nativeScale)
 #define FH_EMOJI_SCREEN_HEIGHT ([UIScreen mainScreen].nativeBounds.size.height/[UIScreen mainScreen].nativeScale)
+
 #define FH_EMOJI_COUNT_OF_EACHPAGE (self.numOfCols * self.numOfLines)
-#define FH_EMOJI_CATEGORY_SIZE 60.f
+#define FH_EMOJI_CATEGORY_SIZE (FH_EMOJI_SCREEN_WIDTH/(self.categories.count + 1))
 #define FH_EMOJI_CATEGORY_HEIGHT 40.f
 
 #pragma mark - FHKeyboardEmojiCategory
 
 @implementation FHKeyboardEmojiCategory
+
++ (instancetype)categoryWithIcon:(UIImage *)icon emojis:(NSArray<NSString *> *)emojis
+{
+    FHKeyboardEmojiCategory *category = [[FHKeyboardEmojiCategory alloc] init];
+    category.icon = icon;
+    category.emojis = emojis;
+    return category;
+}
 
 @end
 
@@ -50,6 +57,8 @@
 
 @interface FHEmojiKeyboardLayout:UICollectionViewFlowLayout
 
+@property (strong)NSIndexPath* pathForFocusItem;
+
 @end
 
 @implementation FHEmojiKeyboardLayout
@@ -62,8 +71,8 @@
     }
     return self;
 }
-
 @end
+
 
 #pragma mark - FHKeyboardView
 
@@ -74,6 +83,8 @@
 
 //For state mark
 @property (nonatomic, assign) NSInteger selectedSection;
+@property (nonatomic, strong) NSArray *emojiArray;
+
 @property (nonatomic, assign) NSInteger selectedIndex;
 @property (nonatomic, assign, getter=isShow) BOOL show;
 @property (nonatomic, assign) UIInterfaceOrientation orientation;
@@ -104,6 +115,7 @@ static NSString *const kCategoryCellReuseIdentifier = @"kCategoryCellReuseIdenti
         [self setupKeyboard];
         [self setupPageControl];
         [self setupCategoriesView];
+        [self setupSeperatorForCategoryView];
         [self setupDeleteButton];
         
         self.translatesAutoresizingMaskIntoConstraints = NO;
@@ -152,12 +164,11 @@ static NSString *const kCategoryCellReuseIdentifier = @"kCategoryCellReuseIdenti
     self.categoriesCollectionView.backgroundColor = [UIColor clearColor];
     self.categoriesCollectionView.delegate = self;
     self.categoriesCollectionView.dataSource = self;
-    self.categoriesCollectionView.layer.borderWidth = 1.f;
-    self.categoriesCollectionView.layer.borderColor = [UIColor lightGrayColor].CGColor;
     [self.categoriesCollectionView setTranslatesAutoresizingMaskIntoConstraints:NO];
     [self.categoriesCollectionView selectItemAtIndexPath:[NSIndexPath indexPathForRow:self.selectedSection inSection:0] animated:NO scrollPosition:UICollectionViewScrollPositionNone];
     [self.categoriesCollectionView registerClass:[FHKeyboardCategoryCell class] forCellWithReuseIdentifier:kCategoryCellReuseIdentifier];
     [self addSubview:self.categoriesCollectionView];
+    
     NSLayoutConstraint *leftConstraint = [NSLayoutConstraint constraintWithItem:self.categoriesCollectionView
                                                                       attribute:NSLayoutAttributeLeft
                                                                       relatedBy:NSLayoutRelationEqual
@@ -189,6 +200,45 @@ static NSString *const kCategoryCellReuseIdentifier = @"kCategoryCellReuseIdenti
     [self addConstraints:@[leftConstraint,rightConstraint,bottomConstraint,heightConstraint]];
 }
 
+- (void)setupSeperatorForCategoryView
+{
+    UIView *seperateView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, CGRectGetWidth(self.categoriesCollectionView.bounds), 1.f/[UIScreen mainScreen].scale)];
+    seperateView.backgroundColor = [UIColor colorWithRed:200.f/255.f green:200.f/255.f blue:204.f/255.f alpha:1];
+    seperateView.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.categoriesCollectionView addSubview:seperateView];
+    
+    NSLayoutConstraint *leftConstraint = [NSLayoutConstraint constraintWithItem:seperateView
+                                                                      attribute:NSLayoutAttributeLeft
+                                                                      relatedBy:NSLayoutRelationEqual
+                                                                         toItem:self.categoriesCollectionView
+                                                                      attribute:NSLayoutAttributeLeft
+                                                                     multiplier:1
+                                                                       constant:-1];
+    NSLayoutConstraint *rightConstraint = [NSLayoutConstraint constraintWithItem:seperateView
+                                                                       attribute:NSLayoutAttributeRight
+                                                                       relatedBy:NSLayoutRelationEqual
+                                                                          toItem:self.categoriesCollectionView
+                                                                       attribute:NSLayoutAttributeRight
+                                                                      multiplier:1
+                                                                        constant:1];
+    NSLayoutConstraint *topConstraint = [NSLayoutConstraint constraintWithItem:seperateView
+                                                                     attribute:NSLayoutAttributeTop
+                                                                     relatedBy:NSLayoutRelationEqual
+                                                                        toItem:self.categoriesCollectionView
+                                                                     attribute:NSLayoutAttributeTop
+                                                                    multiplier:1
+                                                                      constant:1];
+    NSLayoutConstraint *heightConstraint = [NSLayoutConstraint constraintWithItem:seperateView
+                                                                        attribute:NSLayoutAttributeHeight
+                                                                        relatedBy:NSLayoutRelationEqual
+                                                                           toItem:nil
+                                                                        attribute:NSLayoutAttributeHeight
+                                                                       multiplier:1
+                                                                         constant:1.f/[UIScreen mainScreen].scale];
+    [self.categoriesCollectionView addConstraints:@[leftConstraint,rightConstraint,topConstraint,heightConstraint]];
+    
+}
+
 - (void)setupDeleteButton {
     self.deleteButton = [UIButton buttonWithType:UIButtonTypeCustom];
     self.deleteButton.frame = CGRectMake(0, 0, FH_EMOJI_CATEGORY_SIZE, FH_EMOJI_CATEGORY_HEIGHT);
@@ -197,12 +247,12 @@ static NSString *const kCategoryCellReuseIdentifier = @"kCategoryCellReuseIdenti
     [self.deleteButton addTarget:self action:@selector(handleDeleteOnClicked:) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:self.deleteButton];
     NSLayoutConstraint *rightConstraint = [NSLayoutConstraint constraintWithItem:self.deleteButton
-                                                                      attribute:NSLayoutAttributeRight
-                                                                      relatedBy:NSLayoutRelationEqual
-                                                                         toItem:self
-                                                                      attribute:NSLayoutAttributeRight
-                                                                     multiplier:1
-                                                                       constant:0];
+                                                                       attribute:NSLayoutAttributeRight
+                                                                       relatedBy:NSLayoutRelationEqual
+                                                                          toItem:self
+                                                                       attribute:NSLayoutAttributeRight
+                                                                      multiplier:1
+                                                                        constant:0];
     NSLayoutConstraint *widthConstraint = [NSLayoutConstraint constraintWithItem:self.deleteButton
                                                                        attribute:NSLayoutAttributeWidth
                                                                        relatedBy:NSLayoutRelationEqual
@@ -300,12 +350,12 @@ static NSString *const kCategoryCellReuseIdentifier = @"kCategoryCellReuseIdenti
                                                                       multiplier:1
                                                                         constant:0];
     NSLayoutConstraint *leftConstraint = [NSLayoutConstraint constraintWithItem:self.pageControl
-                                                                       attribute:NSLayoutAttributeLeft
-                                                                       relatedBy:NSLayoutRelationEqual
-                                                                          toItem:self
-                                                                       attribute:NSLayoutAttributeLeft
-                                                                      multiplier:1
-                                                                        constant:0];
+                                                                      attribute:NSLayoutAttributeLeft
+                                                                      relatedBy:NSLayoutRelationEqual
+                                                                         toItem:self
+                                                                      attribute:NSLayoutAttributeLeft
+                                                                     multiplier:1
+                                                                       constant:0];
     NSLayoutConstraint *bottomConstraint = [NSLayoutConstraint constraintWithItem:self.pageControl
                                                                         attribute:NSLayoutAttributeBottom
                                                                         relatedBy:NSLayoutRelationEqual
@@ -344,7 +394,7 @@ static NSString *const kCategoryCellReuseIdentifier = @"kCategoryCellReuseIdenti
 - (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
     if ([self isCategoriesCollectionView:collectionView]) {
         FHKeyboardCategoryCell *categoryCell = [collectionView dequeueReusableCellWithReuseIdentifier:kCategoryCellReuseIdentifier forIndexPath:indexPath];
-        categoryCell.categoryIcon = [UIImage imageNamed:[NSString stringWithFormat:@"%ld",(long)indexPath.row]];
+        categoryCell.categoryIcon = self.categories[indexPath.row].icon;
         return categoryCell;
     } else {
         FHKeyboardEmojiCategory *currentCategory = self.categories[indexPath.section];
@@ -380,11 +430,7 @@ static NSString *const kCategoryCellReuseIdentifier = @"kCategoryCellReuseIdenti
     if ([self isCategoriesCollectionView:collectionView]) {
         return CGSizeMake(FH_EMOJI_CATEGORY_SIZE, FH_EMOJI_CATEGORY_HEIGHT);
     } else {
-        if (UIInterfaceOrientationIsLandscape([self orientation])) {
-            return CGSizeMake(FH_EMOJI_SCREEN_HEIGHT, self.keyboardHeight);
-        } else {
-            return CGSizeMake(FH_EMOJI_SCREEN_WIDTH,  self.keyboardHeight);
-        }
+        return CGSizeMake(self.bounds.size.width, self.bounds.size.height);
     }
 }
 
@@ -404,6 +450,8 @@ static NSString *const kCategoryCellReuseIdentifier = @"kCategoryCellReuseIdenti
     [self.categoriesCollectionView reloadData];
     [self.keyboard.collectionViewLayout invalidateLayout];
     [self.keyboard reloadData];
+    CGFloat  overCount = categories.firstObject.emojis.count % FH_EMOJI_COUNT_OF_EACHPAGE;
+    self.pageControl.numberOfPages = overCount == 0 ? categories.firstObject.emojis.count / FH_EMOJI_COUNT_OF_EACHPAGE : categories.firstObject.emojis.count / FH_EMOJI_COUNT_OF_EACHPAGE + 1;
 }
 
 - (void)setKeyboardHeight:(CGFloat)keyboardHeight {
@@ -447,6 +495,10 @@ static NSString *const kCategoryCellReuseIdentifier = @"kCategoryCellReuseIdenti
     [self.deleteButton setImage:deleteButtonImage forState:UIControlStateNormal];
 }
 
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView {
+    //    self.pageControl.currentPage = scrollView.contentOffset.x/self.keyboard.frame.size.width;
+}
+
 #pragma mark - PublicMethod
 
 - (void)showInView:(UIView *)view animated:(BOOL)animated {
@@ -486,6 +538,30 @@ static NSString *const kCategoryCellReuseIdentifier = @"kCategoryCellReuseIdenti
     self.show = NO;
 }
 
++ (NSString *)getEmojiFromUnicodeString:(NSString *)code
+{
+    NSScanner *scan = [[NSScanner alloc] initWithString:code];
+    unsigned int val;
+    [scan scanHexInt:&val];
+    char cc[4];
+    cc[3] = (val >> 0) & 0xFF;
+    cc[2] = (val >> 8) & 0xFF;
+    cc[1] = (val >> 16) & 0xFF;
+    cc[0] = (val >> 24) & 0xFF;
+    NSString *s = [[NSString alloc]
+                   initWithBytes:cc
+                   length:4
+                   encoding:NSUTF32StringEncoding];
+    return s;
+}
+
++ (NSString *)getEmojiStringFromUnicode:(UInt64)code
+{
+    int sym = (int)EMOJI_CODE_TO_SYMBOL(code);
+    NSString *emoT = [[NSString alloc] initWithBytes:&sym length:sizeof(sym) encoding:NSUTF8StringEncoding];
+    return emoT;
+}
+
 #pragma mark - WidgetsAction
 
 - (void)handleDeleteOnClicked:(UIButton *)sender
@@ -514,10 +590,6 @@ static NSString *const kCategoryCellReuseIdentifier = @"kCategoryCellReuseIdenti
 
 #pragma mark - Helper
 
-- (BOOL)isCategoriesCollectionView:(UICollectionView *)collectionView {
-    return collectionView == self.categoriesCollectionView;
-}
-
 - (UIInterfaceOrientation)orientation {
     return [UIApplication sharedApplication].statusBarOrientation;
 }
@@ -529,7 +601,10 @@ static NSString *const kCategoryCellReuseIdentifier = @"kCategoryCellReuseIdenti
     self.pageControl.currentPage = self.selectedIndex;
 }
 
-#warning need config emojis more accurate
+- (BOOL)isCategoriesCollectionView:(UICollectionView *)collectionView {
+    return collectionView == self.categoriesCollectionView;
+}
+
 - (NSArray *)defaultEmoticons {
     NSMutableArray *aArray = [NSMutableArray new];
     for (int i=0x1F600; i<=0x1F64F; i++) {
@@ -578,6 +653,7 @@ static NSString *const kCategoryCellReuseIdentifier = @"kCategoryCellReuseIdenti
             [dArray addObject:emoT];
         }
     }
+    
     FHKeyboardEmojiCategory *dCategory = [[FHKeyboardEmojiCategory alloc] init];
     dCategory.emojis = dArray;
     
@@ -592,17 +668,20 @@ static NSString *const kCategoryCellReuseIdentifier = @"kCategoryCellReuseIdenti
     }
     FHKeyboardEmojiCategory *eCategory = [[FHKeyboardEmojiCategory alloc] init];
     eCategory.emojis = eArray;
+    
     return @[aCategory,bCategory,cCategory,dCategory,eCategory];
 }
 
 - (void)resetKeyBoardLayout {
-    if (UIInterfaceOrientationIsLandscape([self orientation])) {
-        self.keyboard.frame = CGRectMake(0, 0, FH_EMOJI_SCREEN_HEIGHT, self.keyboardHeight);
-    } else {
-        self.keyboard.frame = CGRectMake(0, 0, FH_EMOJI_SCREEN_WIDTH, self.keyboardHeight);
-    }
+    self.keyboard.frame = CGRectMake(0, 0, self.bounds.size.width, self.bounds.size.height);
     [self.keyboard.collectionViewLayout invalidateLayout];
     [self.keyboard reloadData];
+    if (self.categories) {
+        if (self.categories.firstObject.emojis.count > 0)
+        {
+            [self.keyboard scrollToItemAtIndexPath:[NSIndexPath indexPathForRow:self.selectedIndex inSection:self.selectedSection] atScrollPosition:UICollectionViewScrollPositionLeft animated:NO];
+        }
+    }
 }
 
 @end

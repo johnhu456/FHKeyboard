@@ -11,7 +11,7 @@
 @interface FHKeyboardEmojiCell()
 
 @property (nonatomic, strong) NSArray<UIButton *> *emojiButtons;
-
+@property (nonatomic, strong) NSArray<UILabel *> *emojiLabels;
 @end
 
 #define FH_EMOJI_SIZE 30.f
@@ -44,42 +44,46 @@ static CGFloat const kTopInsets = 20.f;
     for (UIButton *emoji in self.emojiButtons) {
         [emoji removeFromSuperview];
     }
+    for (UILabel *emoji in self.emojiLabels) {
+        [emoji removeFromSuperview];
+    }
     self.emojiButtons = nil;
     
     //Add new panel
     NSMutableArray *addedButtons = [[NSMutableArray alloc] init];
+    NSMutableArray *addedLabels = [[NSMutableArray alloc] init];
     for (int line = 0; line < _numOfLines ; line++) {
         for (int col = 0; col < _numOfCols ; col++) {
             NSInteger index = line * _numOfCols + col;
             if (index <= self.emojiArray.count - 1) {
                 UIButton *newEmojiButton = [UIButton buttonWithType:UIButtonTypeCustom];
-                [newEmojiButton setTitle:self.emojiArray[index] forState:UIControlStateNormal];
+//                NSAttributedString *attributedTitle = [[NSAttributedString alloc] initWithString:self.emojiArray[index]];
+                //                Button's title not work well with emoji
+                //                newEmojiButton.titleLabel.text = self.emojiArray[index];
+                //                [newEmojiButton setAttributedTitle:attributedTitle forState:UIControlStateNormal];
                 newEmojiButton.titleLabel.font = [UIFont systemFontOfSize:FH_EMOJI_SIZE - 5.f];
                 newEmojiButton.frame = CGRectMake(FH_EMOJI_COL_SPACING + col * (FH_EMOJI_COL_SPACING + FH_EMOJI_SIZE), kTopInsets + line * (FH_EMOJI_Line_SPACING + FH_EMOJI_SIZE), FH_EMOJI_SIZE, FH_EMOJI_SIZE);
                 newEmojiButton.tag = index;
                 [newEmojiButton addTarget:self action:@selector(handleEmojiButtonClicked:) forControlEvents:UIControlEventTouchUpInside];
                 [addedButtons addObject:newEmojiButton];
+                UILabel *label = [[UILabel alloc] init];
+                label.frame = newEmojiButton.frame;
+                label.text = self.emojiArray[index];
+                label.font = [UIFont systemFontOfSize:FH_EMOJI_SIZE - 5.f];
+                label.userInteractionEnabled = NO;
+                [addedLabels addObject:label];
+                [self.contentView addSubview:label];
                 [self.contentView addSubview:newEmojiButton];
             }
-//        else {
-//                break;
-//            }
         }
-//        if (addedButtons.count == self.emojiArray.count) {
-//            UIButton *deleteButton = [UIButton buttonWithType:UIButtonTypeCustom];
-//            [deleteButton setImage:self.deleteButtonImage forState:UIControlStateNormal];
-//            deleteButton.frame = CGRectMake(FH_EMOJI_COL_SPACING + (_numOfCols - 1) * (FH_EMOJI_COL_SPACING + FH_EMOJI_SIZE), kTopInsets + (kNumberOfLine - 1)* (FH_EMOJI_Line_SPACING + FH_EMOJI_SIZE), FH_EMOJI_SIZE, FH_EMOJI_SIZE);
-//            [deleteButton addTarget:self action:@selector(handleDeleteButtonOnClicked:) forControlEvents:UIControlEventTouchUpInside];
-//            [addedButtons addObject:deleteButton];
-//            [self.contentView addSubview:deleteButton];
-//            break;
-//        }
     }
+    self.emojiLabels = [addedLabels copy];
     self.emojiButtons = [addedButtons copy];
 }
 - (void)handleEmojiButtonClicked:(UIButton *)sender {
     if (self.handleEmojiClicked) {
-        self.handleEmojiClicked(sender.titleLabel.text);
+        UILabel *emojiLabel = self.emojiLabels[sender.tag];
+        self.handleEmojiClicked(emojiLabel.text);
     }
 }
 
@@ -112,33 +116,33 @@ static CGFloat const kTopInsets = 20.f;
     [self.contentView addSubview:self.imageView];
     [self.imageView setTranslatesAutoresizingMaskIntoConstraints:NO];
     NSLayoutConstraint *widthConstraint = [NSLayoutConstraint constraintWithItem:self.imageView
-                                                                      attribute:NSLayoutAttributeWidth
-                                                                      relatedBy:NSLayoutRelationEqual
-                                                                         toItem:self.contentView
-                                                                      attribute:NSLayoutAttributeWidth
-                                                                     multiplier:0
-                                                                        constant:30.f];
-    NSLayoutConstraint *centerXConstraint = [NSLayoutConstraint constraintWithItem:self.imageView
-                                                                       attribute:NSLayoutAttributeCenterX
+                                                                       attribute:NSLayoutAttributeWidth
                                                                        relatedBy:NSLayoutRelationEqual
                                                                           toItem:self.contentView
-                                                                       attribute:NSLayoutAttributeCenterX
-                                                                      multiplier:1
-                                                                        constant:0];
+                                                                       attribute:NSLayoutAttributeWidth
+                                                                      multiplier:0
+                                                                        constant:30.f];
+    NSLayoutConstraint *centerXConstraint = [NSLayoutConstraint constraintWithItem:self.imageView
+                                                                         attribute:NSLayoutAttributeCenterX
+                                                                         relatedBy:NSLayoutRelationEqual
+                                                                            toItem:self.contentView
+                                                                         attribute:NSLayoutAttributeCenterX
+                                                                        multiplier:1
+                                                                          constant:0];
     NSLayoutConstraint *bottomLayoutConstraint = [NSLayoutConstraint constraintWithItem:self
-                                                               attribute:NSLayoutAttributeBottom
-                                                               relatedBy:NSLayoutRelationEqual
-                                                                  toItem:self.contentView
-                                                               attribute:NSLayoutAttributeBottom
-                                                              multiplier:1
-                                                                constant:0];
+                                                                              attribute:NSLayoutAttributeBottom
+                                                                              relatedBy:NSLayoutRelationEqual
+                                                                                 toItem:self.contentView
+                                                                              attribute:NSLayoutAttributeBottom
+                                                                             multiplier:1
+                                                                               constant:0];
     NSLayoutConstraint *centerYLayoutConstraint = [NSLayoutConstraint constraintWithItem:self.imageView
-                                                                        attribute:NSLayoutAttributeCenterY
-                                                                        relatedBy:NSLayoutRelationEqual
-                                                                           toItem:self
-                                                                        attribute:NSLayoutAttributeCenterY
-                                                                       multiplier:1
-                                                                         constant:0];
+                                                                               attribute:NSLayoutAttributeCenterY
+                                                                               relatedBy:NSLayoutRelationEqual
+                                                                                  toItem:self
+                                                                               attribute:NSLayoutAttributeCenterY
+                                                                              multiplier:1
+                                                                                constant:0];
     [self addConstraints:@[widthConstraint,centerXConstraint,bottomLayoutConstraint,centerYLayoutConstraint]];
 }
 
@@ -149,6 +153,6 @@ static CGFloat const kTopInsets = 20.f;
 
 - (void)setSelected:(BOOL)selected {
     [super setSelected:selected];
-    self.backgroundColor = self.selected ? [UIColor lightGrayColor] : [UIColor whiteColor];
+    self.backgroundColor = self.selected ? [UIColor colorWithRed:0xE6/255.f green:0xE6/255.f  blue:0xEB/255.f  alpha:1] : [UIColor whiteColor];
 }
 @end
